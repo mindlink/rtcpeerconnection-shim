@@ -888,6 +888,21 @@ module.exports = function(window, edgeVersion) {
           description.sdp =
               SDPUtils.getDescription(description.sdp) +
               newDescriptionSections.join('');
+
+          /* Modify media line protocol to match what the peer asked for in
+           the renegotiation (consistently with other browsers):*/
+          var remoteMediaDescriptions = SDPUtils.getMediaSections(
+            pc._remoteDescription.sdp);
+          var remoteMediaDescription = remoteMediaDescriptions[sdpMLineIndex];
+
+          if (remoteMediaDescription.indexOf('SAVPF') < 0) {
+            description.sdp = description.sdp.replace(
+              'UDP/TLS/RTP/SAVPF', 'UDP/TLS/RTP/SAVP');
+          }
+
+          if (remoteMediaDescription.indexOf('UDP/TLS/') < 0) {
+            description.sdp = description.sdp.replace('UDP/TLS/', '');
+          }
         }
       });
     }
