@@ -723,6 +723,33 @@ module.exports = function(window, edgeVersion) {
             false);
         }
       });
+
+      var newDescriptionSections = SDPUtils.splitSections(description.sdp);
+      sessionpart = newDescriptionSections.shift();
+      newDescriptionSections.forEach(function(_, sdpMLineIndex) {
+        var transceiver = pc.transceivers[sdpMLineIndex];
+        var iceGatherer = transceiver.iceGatherer;
+        if (iceGatherer.state === 'completed') {
+          var candidates = iceGatherer.getLocalCandidates();
+          for (var i = 0; i < candidates.length; i++) {
+            var candidate = candidates[i];
+            // RTCIceCandidate doesn't have a component, needs to be added
+            candidate.component = 1;
+            // also the usernameFragment. TODO: update SDP to take both variants
+            candidate.ufrag = iceGatherer.getLocalParameters().usernameFragment;
+
+            var serializedCandidate = SDPUtils.writeCandidate(candidate);
+
+            newDescriptionSections[sdpMLineIndex] +=
+              'a=' + serializedCandidate + '\r\n';
+          }
+          // newDescriptionSections[sdpMLineIndex] += 'a=end-of-candidates\r\n';
+
+          description.sdp =
+              SDPUtils.getDescription(description.sdp) +
+              newDescriptionSections.join('');
+        }
+      });
     }
 
     pc._localDescription = {
